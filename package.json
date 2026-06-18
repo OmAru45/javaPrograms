@@ -1,0 +1,54 @@
+import { useEffect, useState } from 'react';
+import api from '../../api/axios';
+import AppLayout from '../../components/AppLayout';
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api
+      .get('/admin/dashboard')
+      .then((res) => setStats(res.data))
+      .catch(() => setError('Could not load dashboard figures.'));
+  }, []);
+
+  return (
+    <AppLayout>
+      <div className="page-header">
+        <div>
+          <h1>Administrator dashboard</h1>
+          <p>A running tally of everyone and everything on the platform.</p>
+        </div>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {stats && (
+        <div className="stat-grid">
+          <div className="stat-card">
+            <span className="seal"><span className="seal-value">{stats.totalUsers}</span><span className="seal-label">Total</span></span>
+            <div className="stat-text">
+              <div className="stat-title">Registered users</div>
+              <div className="stat-value">{stats.totalUsers}</div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <span className="seal"><span className="seal-value">{stats.totalStores}</span><span className="seal-label">Total</span></span>
+            <div className="stat-text">
+              <div className="stat-title">Registered stores</div>
+              <div className="stat-value">{stats.totalStores}</div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <span className="seal"><span className="seal-value">{stats.totalRatings}</span><span className="seal-label">Total</span></span>
+            <div className="stat-text">
+              <div className="stat-title">Ratings submitted</div>
+              <div className="stat-value">{stats.totalRatings}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </AppLayout>
+  );
+}

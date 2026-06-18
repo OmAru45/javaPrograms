@@ -1,0 +1,84 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../api/axios';
+import AppLayout from '../../components/AppLayout';
+
+export default function AdminAddStore() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: '', email: '', address: '', ownerId: '' });
+  const [owners, setOwners] = useState([]);
+  const [errors, setErrors] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api
+      .get('/admin/users', { params: { role: 'owner', sortBy: 'name', sortOrder: 'asc' } })
+      .then((res) => setOwners(res.data.users))
+      .catch(() => {});
+  }, []);
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrors([]);
+    setSubmitting(true);
+    try {
+      await api.post('/admin/stores', { ...form, ownerId: form.ownerId || null });
+      navigate('/admin/stores');
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.errors) setErrors(data.errors.map((x) => x.message));
+      else setErrors([data?.message || 'Could not create this store.']);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AppLayout>
+      <div className="page-header">
+        <div>
+          <h1>Add a new store</h1>
+          <p>Register a store on the platform, optionally linked to a store-owner account.</p>
+        </div>
+      </div>
+
+      <div className="card" style={{ maxWidth: 480 }}>
+        {errors.length > 0 && (
+          <div className="alert alert-error">
+            {errors.map((msg, i) => <div key={i}>{msg}</div>)}
+          </div>
+        )}
+        <form className="form-grid" onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="name">Store name</label>
+            <input id="name" name="name" required value={form.name} onChange={handleChange} />
+          </div>
+          <div className="field">
+            <label htmlFor="email">Store email</label>
+            <input id="email" name="email" type="email" required value={form.email} onChange={handleChange} />
+          </div>
+          <div className="field">
+            <label htmlFor="address">Address</label>
+            <textarea id="address" name="address" rows={3} required value={form.address} onChange={handleChange} />
+            <span className="hint">Up to 400 characters</span>
+          </div>
+          <div className="field">
+            <label htmlFor="ownerId">Store owner</label>
+            <select id="ownerId" name="ownerId" value={form.ownerId} onChange={handleChange}>
+              <option value="">No owner assigned yet</option>
+              {owners.map((o) => (
+                <option key={o.id} value={o.id}>{o.name} — {o.email}</option>
+              ))}
+            </select>
+            <span className="hint">Only accounts created with the "Store owner" role appear here</span>
+          </div>
+          <button className="btn btn-primary" type="submit" disabled={submitting}>
+            {submitting ? 'Creating…' : 'Create store'}
+          </button>
+        </form>
+      </div>
+    </AppLayout>
+  );
+}

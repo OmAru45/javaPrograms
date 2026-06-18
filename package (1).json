@@ -1,0 +1,43 @@
+const db = require('../config/db');
+const { asyncHandler } = require('../middleware/errorHandler');
+
+// GET /api/owner/dashboard
+// Looks up the store(s) owned by the logged-in store-owner account, the
+// users who rated it, and the average rating. Most setups give one store
+// per owner, but this also works if an owner is linked to several.
+const getDashboard = asyncHandler(async (req, res) => {
+  const stores = await db.query(
+    `SELECT id, name, email, address FROM stores WHERE owner_id = $1 ORDER BY name`,
+    [req.user.id]
+  );
+
+  if (stores.rows.length === 0) {
+    return res.json({ stores: [], averageRating: null, raters: [] });
+  }
+
+  const storeIds = stores.rows.map((s) => s.id);
+
+  const avgResult = await db.query(
+    `SELECT ROUND(AVG(rating)::numeric, 2) AS average_rating, COUNT(*)::int AS rating_count
+     FROM ratings WHERE store_id = ANY($1::int[])`,
+    [storeIds]
+  );
+
+  const ratersResult = await db.query(
+    `SELECT u.id AS user_id, u.name, u.email, r.store_id, r.rating, r.updated_at
+     FROM ratings r
+     JOIN users u ON u.id = r.user_id
+     WHERE r.store_id = ANY($1::int[])
+     ORDER BY r.updated_at DESC`,
+    [storeIds]
+  );
+
+  return res.json({
+    stores: stores.rows,
+    averageRating: avgResult.rows[0].average_rating,
+    ratingCount: avgResult.rows[0].rating_count,
+    raters: ratersResult.rows,
+  });
+});
+
+module.exports = { getDashboard };
